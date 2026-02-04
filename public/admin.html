@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MILNET Hispaña — Panel Rey</title>
+
+  <link rel="stylesheet" href="styles.css"/>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- Tu firebase.js -->
+  <script src="firebase.js"></script>
+
+  <style>
+    .adminShell{display:grid;grid-template-columns:280px 1fr;gap:12px;min-height:100vh;padding:12px}
+    @media(max-width:900px){.adminShell{grid-template-columns:1fr}}
+    .adminSide{position:sticky;top:12px;height:calc(100vh - 24px);overflow:auto}
+    @media(max-width:900px){.adminSide{position:relative;height:auto}}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
+    @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){.kpis{grid-template-columns:1fr}}
+    .kpi{border:1px solid rgba(148,163,184,.12);background:rgba(17,17,20,.65);border-radius:14px;padding:12px}
+    .kpi .label{letter-spacing:2px;color:#6b7280}
+    .kpi .value{font-weight:900;font-size:20px;margin-top:6px}
+    .page{display:none}
+    .page.active{display:block}
+    .tbl{width:100%;border-collapse:collapse}
+    .tbl th,.tbl td{padding:10px;border-bottom:1px solid rgba(148,163,184,.12);text-align:left;font-size:13px}
+    .pill2{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(148,163,184,.16);background:rgba(17,17,20,.55);font-size:12px;color:#cbd5e1}
+    .danger{color:#fca5a5}
+    .muted{color:#9ca3af}
+    .tag{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid rgba(148,163,184,.16);background:rgba(17,17,20,.55)}
+  </style>
+</head>
+
+<body>
+  <div class="gridbg"></div>
+  <div class="scanline"></div>
+
+  <div class="adminShell">
+    <!-- SIDEBAR -->
+    <aside class="adminSide card" style="background:var(--panel2);padding:14px">
+      <div class="pill mono">PANEL REY • ADMINISTRACIÓN</div>
+      <h3 style="margin:12px 0 6px 0;">MILNET Hispaña</h3>
+      <div class="mono small" id="adminWho">CARGANDO PERFIL…</div>
+
+      <div class="card" style="margin-top:12px;padding:12px">
+        <div class="mono small" style="letter-spacing:2px;color:#6b7280">ESTADO</div>
+        <div class="row" style="margin-top:10px">
+          <span class="pill2 mono"><span style="color:#86efac">●</span> ONLINE</span>
+          <span class="pill2 mono" id="adminScope">SCOPE: —</span>
+        </div>
+      </div>
+
+      <div class="nav" style="margin-top:12px">
+        <button class="btn btn2" onclick="adminOpenTab('aDash')">DASHBOARD</button>
+        <button class="btn btn2" onclick="adminOpenTab('aUsers')">USUARIOS</button>
+        <button class="btn btn2" onclick="adminOpenTab('aUnits')">UNIDADES</button>
+        <button class="btn btn2" onclick="adminOpenTab('aOrders')">COMUNICADOS</button>
+        <button class="btn btn2" onclick="adminOpenTab('aCUM')">CUM</button>
+        <button class="btn btn2" onclick="adminOpenTab('aOps')">OPERACIONES</button>
+        <button class="btn btn2" onclick="adminOpenTab('aSettings')">AJUSTES</button>
+        <button class="btn btndanger" id="adminLogout">CERRAR SESIÓN</button>
+        <button class="btn" onclick="location.href='app.html'">VOLVER A MILNET</button>
+      </div>
+
+      <div class="mono foot2">ACCESO RESTRINGIDO • TODO QUEDA REGISTRADO</div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <!-- DASH -->
+      <section id="aDash" class="card fade page active">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Panel Rey — Dashboard</h2>
+            <div class="small muted">Vista global, auditoría y accesos de alto nivel.</div>
+          </div>
+          <div class="row">
+            <button class="btn" onclick="adminRefreshAll()">REFRESCAR TODO</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="mono small label">USUARIOS</div>
+            <div class="value" id="kUsers">—</div>
+            <div class="small muted" id="kUsersSub">Cargando…</div>
+          </div>
+          <div class="kpi">
+            <div class="mono small label">UNIDADES</div>
+            <div class="value" id="kUnits">—</div>
+            <div class="small muted" id="kUnitsSub">Cargando…</div>
+          </div>
+          <div class="kpi">
+            <div class="mono small label">ORDENES</div>
+            <div class="value" id="kOrders">—</div>
+            <div class="small muted" id="kOrdersSub">Cargando…</div>
+          </div>
+          <div class="kpi">
+            <div class="mono small label">EVENTOS CUM</div>
+            <div class="value" id="kCUM">—</div>
+            <div class="small muted" id="kCUMSub">Cargando…</div>
+          </div>
+        </div>
+
+        <div class="grid2" style="grid-template-columns:420px 1fr">
+          <div class="card" style="padding:14px">
+            <div class="mono small" style="letter-spacing:2px;color:#6b7280">ACCESOS RÁPIDOS</div>
+            <div style="margin-top:10px;display:grid;gap:10px">
+              <button class="btn" onclick="adminOpenTab('aUsers')">Gestionar Usuarios</button>
+              <button class="btn btn2" onclick="adminOpenTab('aUnits')">Gestionar Unidades</button>
+              <button class="btn btn2" onclick="adminOpenTab('aOrders')">Comunicados</button>
+              <button class="btn btn2" onclick="adminOpenTab('aCUM')">CUM</button>
+              <button class="btn btn2" onclick="adminOpenTab('aOps')">Operaciones</button>
+              <button class="btn btn2" onclick="adminOpenTab('aSettings')">Ajustes</button>
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <div class="mono small" style="letter-spacing:2px;color:#6b7280">AUDITORÍA RÁPIDA</div>
+                <div class="small muted">Últimas acciones registradas.</div>
+              </div>
+              <button class="btn btn2" onclick="adminRenderLogs()">RECARGAR</button>
+            </div>
+            <div id="adminLogs" style="margin-top:12px">Cargando…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USERS -->
+      <section id="aUsers" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Usuarios</h2>
+            <div class="small muted">Buscar, editar rango, cuerpo, unidad, clearance.</div>
+          </div>
+          <div class="row">
+            <input id="uSearch" class="input" style="max-width:280px;margin-top:0" placeholder="Buscar nombre/email…" />
+            <button class="btn" onclick="adminRenderUsers(true)">BUSCAR</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;padding:14px">
+          <div class="mono small" style="letter-spacing:2px;color:#6b7280">CAMBIOS</div>
+          <div class="small muted">Selecciona un usuario y guarda cambios. (Cambios quedan en logs).</div>
+        </div>
+
+        <div id="usersTable" style="margin-top:12px">Cargando…</div>
+      </section>
+
+      <!-- UNITS -->
+      <section id="aUnits" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Unidades</h2>
+            <div class="small muted">Crear, listar y eliminar unidades.</div>
+          </div>
+          <div class="row">
+            <button class="btn" onclick="adminToggleUnitCreate(true)">+ NUEVA UNIDAD</button>
+            <button class="btn btn2" onclick="adminRenderUnits()">REFRESCAR</button>
+          </div>
+        </div>
+
+        <div id="unitCreateBox" class="card" style="display:none;margin-top:12px;padding:14px">
+          <div class="mono small" style="letter-spacing:2px;color:#6b7280">CREAR UNIDAD</div>
+          <select id="auBranch" class="input">
+            <option value="ETH">ETH</option>
+            <option value="EAEH">EAEH</option>
+            <option value="ARM">ARM</option>
+            <option value="PMH">PMH</option>
+            <option value="GCH">GCH</option>
+          </select>
+          <input id="auType" class="input" placeholder="Tipo (División, Ala, Flota…)" />
+          <input id="auName" class="input" placeholder="Nombre" />
+          <input id="auBase" class="input" placeholder="Base" />
+          <div class="row">
+            <button class="btn" onclick="adminCreateUnit()">CREAR</button>
+            <button class="btn btn2" onclick="adminToggleUnitCreate(false)">CANCELAR</button>
+          </div>
+        </div>
+
+        <div id="unitsTable" style="margin-top:12px">Cargando…</div>
+      </section>
+
+      <!-- ORDERS -->
+      <section id="aOrders" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Comunicados</h2>
+            <div class="small muted">Vista global. El Rey puede borrar y auditar.</div>
+          </div>
+          <div class="row">
+            <button class="btn btn2" onclick="adminRenderOrders()">REFRESCAR</button>
+          </div>
+        </div>
+        <div id="ordersTable" style="margin-top:12px">Cargando…</div>
+      </section>
+
+      <!-- CUM -->
+      <section id="aCUM" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">CUM</h2>
+            <div class="small muted">Eventos, crisis y borrado administrativo.</div>
+          </div>
+          <div class="row">
+            <button class="btn btn2" onclick="adminRenderCUM()">REFRESCAR</button>
+          </div>
+        </div>
+        <div id="cumTable" style="margin-top:12px">Cargando…</div>
+      </section>
+
+      <!-- OPS -->
+      <section id="aOps" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Operaciones</h2>
+            <div class="small muted">Modo seguro: evita índices compuestos (filtrado por cliente).</div>
+          </div>
+          <div class="row">
+            <button class="btn btn2" onclick="adminRenderOps()">REFRESCAR</button>
+          </div>
+        </div>
+        <div id="opsTable" style="margin-top:12px">Cargando…</div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="aSettings" class="card fade page">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2 style="margin:0">Ajustes</h2>
+            <div class="small muted">Config org, seed, export y diagnóstico.</div>
+          </div>
+          <div class="row">
+            <button class="btn btn2" onclick="adminLoadConfig()">CARGAR CONFIG</button>
+            <button class="btn" onclick="seedHispañaOrgConfig?.()">SEED</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;padding:14px">
+          <div class="mono small" style="letter-spacing:2px;color:#6b7280">CONFIG ACTUAL</div>
+          <pre id="cfgBox" style="white-space:pre-wrap;margin-top:10px" class="small muted">—</pre>
+        </div>
+
+        <div class="card" style="margin-top:12px;padding:14px">
+          <div class="mono small" style="letter-spacing:2px;color:#6b7280">DIAGNÓSTICO</div>
+          <div id="diagBox" class="small muted" style="margin-top:10px">—</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Base -->
+  <script src="ui.js"></script>
+  <script src="modules.js"></script>
+  <script src="seed_hispana.js"></script>
+
+  <!-- Admin -->
+  <script src="admin.js"></script>
+</body>
+</html>
