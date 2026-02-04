@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hispaña MILNET — Acceso Seguro</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Firebase SDKs (orden IMPORTANTE) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="firebase.js"></script>
+</head>
+
+<body>
+  <div class="gridbg"></div>
+  <div class="scanline"></div>
+
+  <div class="center">
+    <div class="login card glow fade">
+      <div class="topline">
+        <div>
+          <div class="pill mono">CLASIFICADO • USO MILITAR</div>
+          <h2>HISPAÑA MILNET</h2>
+          <div class="small mono">Secure Communications Gateway</div>
+        </div>
+        <div class="node mono">
+          <div class="small">NODO</div>
+          <div class="nodeval">CENTRAL-COMMAND</div>
+          <div class="build">BUILD 4.7.2</div>
+        </div>
+      </div>
+
+      <p class="small" style="margin-top:14px">
+        Acceso exclusivo para personal autorizado. Toda actividad queda registrada.
+      </p>
+
+      <form id="loginForm" style="margin-top:10px">
+        <label class="mono small">CORREO</label>
+        <input id="email" class="input" type="email" placeholder="usuario@hispana.mil" required>
+
+        <label class="mono small" style="display:block;margin-top:10px;">CONTRASEÑA</label>
+        <input id="password" class="input" type="password" placeholder="••••••••••" required>
+
+        <button id="btnLogin" class="btn" type="submit">ACCEDER</button>
+        <div id="error" class="error"></div>
+      </form>
+
+      <div class="footerline">
+        <div class="mono foot">© MINISTERIO DE DEFENSA</div>
+        <div id="status" class="mono foot">LISTO</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const errorEl = document.getElementById("error");
+    const btn = document.getElementById("btnLogin");
+
+    function setError(msg){
+      errorEl.textContent = msg;
+      errorEl.classList.add("show");
+    }
+    function clearError(){
+      errorEl.classList.remove("show");
+      errorEl.textContent = "";
+    }
+
+    let auth;
+    try {
+      auth = initFirebase(); // viene de firebase.js
+      statusEl.textContent = "LISTO";
+      statusEl.style.color = "#86efac";
+    } catch (e) {
+      statusEl.textContent = "FALLO FIREBASE";
+      statusEl.style.color = "#fca5a5";
+      setError("Firebase no está cargando. Revisa scripts o conexión.");
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      clearError();
+
+      if (!auth) return setError("Firebase no inicializado.");
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const old = btn.textContent;
+      btn.textContent = "VERIFICANDO…";
+      btn.disabled = true;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => window.location.href = "app.html")
+        .catch(() => {
+          setError("Acceso denegado. Revisa credenciales.");
+          btn.textContent = old;
+          btn.disabled = false;
+        });
+    });
+  </script>
+</body>
+</html>
